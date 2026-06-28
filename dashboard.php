@@ -2,26 +2,24 @@
 session_start();
 require 'db.php';
 
-// Proteksi Halaman: Jika belum login, tendang ke login.php
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header('Location: login.php');
     exit();
 }
 
 $user_id  = $_SESSION['user_id'];
-$username = $_SESSION['username'];
-$role     = $_SESSION['role'];
+$username = $_SESSION['username'] ?? '';
+$role     = $_SESSION['role'] ?? '';
 
-// Ambil data produk untuk modul Manajer & Pengguna
-$query_produk = "SELECT * FROM products";
-$result_produk = $conn->query($query_produk);
+$result_produk = $conn->query("SELECT * FROM products");
+function e(mixed $v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pusat Kontrol Sistem - bekalkopibdg</title>
+    <title>Dashboard | bekalkopibdg</title>
     <style>
         :root {
             --primary: #4A3022;
@@ -29,86 +27,130 @@ $result_produk = $conn->query($query_produk);
             --success: #2a9d8f;
             --danger: #e63946;
             --dark: #1d1a18;
-            --light: #FAEDCD;
             --white: #ffffff;
+            --bg: #f7f5f0;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { background-color: #f7f5f0; color: var(--dark); display: flex; min-height: 100vh; }
-        
-        /* Sidebar Navigation */
-        .sidebar { width: 260px; background-color: var(--primary); color: var(--white); padding: 20px; display: flex; flex-direction: column; }
-        .sidebar h2 { font-size: 20px; text-align: center; margin-bottom: 30px; letter-spacing: 1px; color: var(--secondary); }
-        .user-info { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center; }
-        .user-info span { display: block; font-size: 12px; color: var(--secondary); text-transform: uppercase; font-weight: bold; }
-        .sidebar a { color: #f0e6df; text-decoration: none; padding: 12px 15px; display: block; border-radius: 5px; margin-bottom: 8px; font-size: 14px; transition: 0.3s; }
-        .sidebar a:hover, .sidebar a.active { background-color: var(--secondary); color: var(--primary); font-weight: bold; }
+        body { background-color: var(--bg); color: var(--dark); display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: 260px;
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar h2 {
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+            color: var(--secondary);
+        }
+        .user-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .user-info span { display: block; font-size: 12px; color: var(--secondary); text-transform: uppercase; font-weight: 800; }
+
+        .sidebar a {
+            color: #f0e6df;
+            text-decoration: none;
+            padding: 12px 15px;
+            display: block;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            background-color: var(--secondary);
+            color: var(--primary);
+            font-weight: bold;
+        }
         .logout-btn { margin-top: auto; background-color: var(--danger) !important; color: white !important; text-align: center; }
 
-        /* Main Content Workspace */
         .main-content { flex: 1; padding: 40px 30px; overflow-y: auto; }
         .header-title { margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* UI Components: Cards & Tables */
+
         .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .card { background: var(--white); padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid var(--secondary); }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid var(--secondary); }
         .card.success { border-left-color: var(--success); }
         .card h3 { font-size: 14px; color: #777; text-transform: uppercase; margin-bottom: 10px; }
         .card .value { font-size: 24px; font-weight: bold; color: var(--primary); }
-        
-        .section-block { background: var(--white); padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+
+        .section-block {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
         .section-block h2 { font-size: 18px; margin-bottom: 20px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-        
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
         th { background-color: #fcfbfa; color: var(--primary); font-weight: bold; }
         tr:hover { background-color: #faf9f6; }
-        
-        /* Forms & Badges */
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .badge.bos { background: #ffdde1; color: #ee6055; }
         .badge.manajer { background: #e2e2ff; color: #4d4dff; }
         .badge.karyawan { background: #e3faf2; color: #2a9d8f; }
         .badge.corlab { background: #fff3cd; color: #856404; }
-        .badge.active { background: #d4edda; color: #155724; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
-        .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; }
-        .btn:hover { background: var(--secondary); color: var(--primary); }
-        
-        /* Product Catalog Grid for Customer View */
+        .badge.pengguna { background: #dbeafe; color: #1d4ed8; }
+
         .catalog-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
         .catalog-item { background: #fff; border: 1px solid #eedec4; border-radius: 8px; padding: 15px; text-align: center; }
         .catalog-item h4 { color: var(--primary); margin-bottom: 8px; }
         .catalog-item p { font-size: 12px; color: #666; margin-bottom: 12px; height: 36px; overflow: hidden; }
         .catalog-item .price { font-weight: bold; color: var(--secondary); display: block; margin-bottom: 10px; }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { background: var(--secondary); color: var(--primary); }
+
+        .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
     </style>
 </head>
 <body>
-
-    <!-- SIDEBAR -->
     <div class="sidebar">
         <h2>bekalkopibdg</h2>
         <div class="user-info">
-            <p><strong><?php echo htmlspecialchars($username); ?></strong></p>
-            <span class="badge <?php echo $role; ?>"><?php echo $role; ?></span>
+            <p><strong><?= e($username) ?></strong></p>
+            <span class="badge <?= e($role) ?>"><?= e($role) ?></span>
         </div>
         <a href="index.php" target="_blank">🌐 Lihat Website Publik</a>
+        <a href="input_data.php">📝 Halaman Input Data</a>
+        <a href="edit_hapus.php">✏️ Form Edit & Hapus</a>
         <a href="dashboard.php" class="active">📊 Dashboard Utama</a>
         <a href="logout.php" class="logout-btn">Keluar Sistem</a>
     </div>
 
-    <!-- MAIN CONTENT WORKSPACE -->
     <div class="main-content">
         <div class="header-title">
             <h1>Workspace Panel Operasional</h1>
-            <p>Hari Ini: <strong><?php echo date('d M Y'); ?></strong></p>
+            <p>Hari Ini: <strong><?= date('d M Y') ?></strong></p>
         </div>
 
-        <!-- ==================== VIEW: BOS ==================== -->
-        <?php if ($role == 'bos'): ?>
-            <!-- Laporan Keuangan Komprehensif -->
+        <?php if ($role === 'bos'): ?>
             <div class="grid-3">
                 <div class="card success">
                     <h3>Total Omzet Bulan Ini (Rupiah)</h3>
@@ -125,6 +167,10 @@ $result_produk = $conn->query($query_produk);
             </div>
 
             <div class="section-block">
+                <div class="action-row">
+                    <a href="input_data.php" class="btn">📝 Halaman Input Data</a>
+                    <a href="edit_hapus.php" class="btn">✏️ Form Edit & Hapus</a>
+                </div>
                 <h2>📈 Rincian Arus Kas Masuk (Penjualan Keliling Bandung)</h2>
                 <table>
                     <thead>
@@ -144,7 +190,6 @@ $result_produk = $conn->query($query_produk);
                 </table>
             </div>
 
-            <!-- Manajemen Karyawan -->
             <div class="section-block">
                 <h2>👥 Manajemen Karyawan Lapangan & Barista</h2>
                 <table>
@@ -158,13 +203,13 @@ $result_produk = $conn->query($query_produk);
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Rian Hidayat</td><td>Barista & Driver Motor Keliling</td><td>Dipatiukur - Dago</td><td><span class="badge active">Bertugas</span></td><td>⭐ 4.8 (850 Botol Terjual)</td></tr>
-                        <tr><td>Siti Aminah</td><td>Admin Media & Logistik Pusat</td><td>Basecamp Bandung</td><td><span class="badge active">Standby</span></td><td>⭐ 4.9 (Stok Akurat)</td></tr>
-                    </ul>
+                        <tr><td>Rian Hidayat</td><td>Barista & Driver Motor Keliling</td><td>Dipatiukur - Dago</td><td><span class="badge">Bertugas</span></td><td>⭐ 4.8 (850 Botol Terjual)</td></tr>
+                        <tr><td>Siti Aminah</td><td>Admin Media & Logistik Pusat</td><td>Basecamp Bandung</td><td><span class="badge">Standby</span></td><td>⭐ 4.9 (Stok Akurat)</td></tr>
+                        <tr><td>Siti Aminah</td><td>Admin Media & Logistik Pusat</td><td>Basecamp Bandung</td><td><span class="badge">Standby</span></td><td>⭐ 4.9 (Stok Akurat)</td></tr>
+                    </tbody>
                 </table>
             </div>
 
-            <!-- Kelola Pengguna (Terintegrasi Sistem Database Nyata) -->
             <div class="section-block">
                 <h2>🔐 Hak Akses Akun & Kelola Pengguna</h2>
                 <table>
@@ -181,14 +226,14 @@ $result_produk = $conn->query($query_produk);
                         <?php
                         $get_users = $conn->query("SELECT id, username, email, role FROM users");
                         while($u = $get_users->fetch_assoc()) {
-                            echo "<tr>
-                                    <td>{$u['id']}</td>
-                                    <td><strong>{$u['username']}</strong></td>
-                                    <td>{$u['email']}</td>
-                                    <td><span class='badge {$u['role']}'>{$u['role']}</span></td>
-                                    <td>";
-                            if($u['role'] != 'bos') {
-                                echo "<a href='delete_proses.php?id={$u['id']}' onclick='return confirm(\"Yakin ingin hapus akun ini?\")' style='color:var(--danger); text-decoration:none; font-weight:bold;'>Hapus Akses</a>";
+                            echo "<tr>";
+                            echo "<td>".e($u['id'])."</td>";
+                            echo "<td><strong>".e($u['username'])."</strong></td>";
+                            echo "<td>".e($u['email'])."</td>";
+                            echo "<td><span class='badge ".e($u['role'])."'>".e($u['role'])."</span></td>";
+                            echo "<td>";
+                            if ($u['role'] !== 'bos') {
+                                echo "<a href='delete_proses.php?id=".e($u['id'])."&type=user' onclick='return confirm(\"Yakin ingin hapus akun ini?\")' style='color:var(--danger); text-decoration:none; font-weight:bold;'>Hapus Akses</a>";
                             } else {
                                 echo "<span style='color:#aaa;'>Utama</span>";
                             }
@@ -198,36 +243,37 @@ $result_produk = $conn->query($query_produk);
                     </tbody>
                 </table>
             </div>
-        <?php endif; ?>
 
-
-        <!-- ==================== VIEW: MANAJER ==================== -->
-        <?php if ($role == 'manajer'): ?>
-            <!-- Update Stok Kopi Botolan -->
+        <?php elseif ($role === 'manajer'): ?>
             <div class="section-block">
-                <h2>📦 Panel Kontrol Stok Kopi Botalan (Inventori Utama)</h2>
-                <form method="POST" action="" style="margin-bottom: 25px; background: #fafafa; padding: 15px; border-radius: 6px;">
+                <h2>📦 Panel Kontrol Stok Kopi Botolan (Inventori Utama)</h2>
+                <form method="POST" action="" style="margin-bottom: 25px; background:#fafafa; padding:15px; border-radius:6px;">
                     <h3 style="font-size:14px; margin-bottom:10px;">Aksi Cepat Tambah Stok Produk</h3>
                     <div style="display:flex; gap:15px; flex-wrap:wrap;">
                         <select name="prod_id" style="padding:8px; border-radius:4px; flex:1;" required>
-                            <?php 
-                            $result_produk->data_seek(0);
-                            while($p = $result_produk->fetch_assoc()) {
-                                echo "<option value='{$p['id']}'>{$p['nama_kopi']} (Sisa: {$p['stok']} btl)</option>";
+                            <?php
+                            if ($result_produk) {
+                                $result_produk->data_seek(0);
+                                while($p = $result_produk->fetch_assoc()) {
+                                    echo "<option value='".e($p['id'])."'>".e($p['nama_kopi'])." (Sisa: ".e($p['stok'])." btl)</option>";
+                                }
                             }
                             ?>
                         </select>
-                        <input type="number" name="tambahan_stok" placeholder="+ Jumlah Botol" style="padding:8px; width:120px; border-radius:4px;" required>
+                        <input type="number" name="tambahan_stok" placeholder="+ Jumlah Botol" style="padding:8px; width:140px; border-radius:4px;" required>
                         <button type="submit" name="update_stok_action" class="btn" style="padding:8px 15px;">Perbarui Stok</button>
                     </div>
                 </form>
-                
+
                 <?php
-                if(isset($_POST['update_stok_action'])) {
-                    $pid = $_POST['prod_id'];
-                    $t_stok = $_POST['tambahan_stok'];
-                    $conn->query("UPDATE products SET stok = stok + $t_stok WHERE id = $pid");
-                    echo "<script>alert('Stok logistik berhasil diperbarui!'); window.location='dashboard.php';</script>";
+                if (isset($_POST['update_stok_action'])) {
+                    $pid = (int)($_POST['prod_id'] ?? 0);
+                    $t_stok = (int)($_POST['tambahan_stok'] ?? 0);
+                    if ($pid > 0 && $t_stok !== 0) {
+                        $conn->query("UPDATE products SET stok = stok + $t_stok WHERE id = $pid");
+                    }
+                    echo "<script>alert('Stok berhasil diperbarui!'); window.location='dashboard.php';</script>";
+                    exit();
                 }
                 ?>
 
@@ -237,33 +283,37 @@ $result_produk = $conn->query($query_produk);
                             <th>ID Varian</th>
                             <th>Nama Kopi Botol</th>
                             <th>Harga Jual</th>
-                            <th>Sisa Stok Gudang</th>
+                            <th>Sisa Stok</th>
                             <th>Status Logistik</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
-                        $result_produk->data_seek(0);
-                        while($p = $result_produk->fetch_assoc()) {
-                            $status_stok = ($p['stok'] > 15) ? "<span class='badge active'>Aman</span>" : "<span class='badge' style='background:#f8d7da; color:#721c24;'>Kritis</span>";
-                            echo "<tr>
-                                    <td>{$p['id']}</td>
-                                    <td><strong>{$p['nama_kopi']}</strong></td>
-                                    <td>Rp ".number_format($p['harga'],0,',','.')."</td>
-                                    <td>{$p['stok']} Botol</td>
-                                    <td>{$status_stok}</td>
-                                  </tr>";
+                        <?php
+                        if ($result_produk) {
+                            $result_produk->data_seek(0);
+                            while($p = $result_produk->fetch_assoc()) {
+                                $status_stok = ((int)$p['stok'] > 15)
+                                    ? "<span class='badge' style='background:#d1fae5; color:#065f46;'>Aman</span>"
+                                    : "<span class='badge' style='background:#fef2f2; color:#b91c1c;'>Kritis</span>";
+
+                                echo "<tr>";
+                                echo "<td>".e($p['id'])."</td>";
+                                echo "<td><strong>".e($p['nama_kopi'])."</strong></td>";
+                                echo "<td>Rp ".number_format((float)$p['harga'], 0, ',', '.')."</td>";
+                                echo "<td>".e($p['stok'])." Botol</td>";
+                                echo "<td>{$status_stok}</td>";
+                                echo "</tr>";
+                            }
                         }
                         ?>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Set Venue / Lokasi Penjualan Harian -->
             <div class="section-block">
                 <h2>📍 Pengaturan Distribusi Titik Jalan (Area Bandung Sekitarnya)</h2>
-                <form method="POST" action="">
-                    <div class="grid-3" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 0;">
+                <form method="POST" action="" onsubmit="event.preventDefault(); alert('Broadcast lokasi (demo)');">
+                    <div class="grid-3" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:0;">
                         <div class="form-group">
                             <label>Pilih Karyawan Lapangan</label>
                             <select name="driver" required>
@@ -283,69 +333,20 @@ $result_produk = $conn->query($query_produk);
                         </div>
                         <div class="form-group">
                             <label>Alokasi Muatan Botol</label>
-                            <input type="number" placeholder="Contoh: 100 Botol" required>
+                            <input type="number" name="botol" placeholder="Contoh: 100 Botol" required>
                         </div>
                     </div>
-                    <button type="button" class="btn" onclick="alert('Lokasi jualan armada keliling berhasil disebarkan ke website publik!')">Broadcast Lokasi Hari Ini</button>
+                    <div style="margin-top: 15px;">
+                        <button type="submit" class="btn">Broadcast Lokasi Hari Ini</button>
+                    </div>
                 </form>
             </div>
-        <?php endif; ?>
 
-
-        <!-- ==================== VIEW: CORLAB ==================== -->
-        <?php if ($role == 'corlab'): ?>
-            <!-- Data Kolaborasi & Event Kampanye -->
-            <div class="section-block">
-                <h2>🤝 Portal Manajemen Kolaborasi Brand & Aktivasi Kampanye</h2>
-                <p style="font-size:14px; margin-bottom:20px; color:#666;">Pantau kesepakatan pemasaran bersama komunitas kreatif, brand clothing lokal Bandung, dan BEM/Himpunan Mahasiswa.</p>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nama Project Kolaborasi</th>
-                            <th>Mitra Kolaborator</th>
-                            <th>Bentuk Aktivasi / Campaign</th>
-                            <th>Tanggal Pelaksanaan</th>
-                            <th>Status Perizinan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Informatics Coffee Stand</strong></td>
-                            <td>Himpunan Mahasiswa Informatika UHS</td>
-                            <td>Suplai 200 botol free-sticker khusus event Expo Teknologi</td>
-                            <td>12 Juli 2026</td>
-                            <td><span class="badge active" style="background:#ccfbf1; color:#115e59;">Approved (Siap Kirim)</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Culture Blend: Threads & Beans</strong></td>
-                            <td>Local Clothing Brand (Braga Area)</td>
-                            <td>Bundling produk: Beli baju gratis Es Kopi Susu Aren Bekal</td>
-                            <td>05 Agustus 2026</td>
-                            <td><span class="badge" style="background:#fef3c7; color:#92400e;">Dalam Negosiasi</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Car Free Day Acoustic Session</strong></td>
-                            <td>Komunitas Musik Jalanan Bandung</td>
-                            <td>Mini showcase musik akustik di samping Motor Box Kopi Dago</td>
-                            <td>Setiap Minggu Pagi</td>
-                            <td><span class="badge active" style="background:#ccfbf1; color:#115e59;">Berjalan Rutin</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <br>
-                <button class="btn" onclick="alert('Formulir pengajuan proposal kolaborasi baru dibuka!')">+ Daftarkan Rencana Aliansi Strategis Baru</button>
-            </div>
-        <?php endif; ?>
-
-
-        <!-- ==================== VIEW: PENGGUNA (CUSTOMER) ==================== -->
-        <?php if ($role == 'pengguna'): ?>
-            <!-- Peluang Member & Akumulasi Poin -->
+        <?php elseif ($role === 'pengguna'): ?>
             <div class="grid-3">
-                <div class="card success" style="background: linear-gradient(135deg, #4A3022, #332015); color: white;">
+                <div class="card success" style="background: linear-gradient(135deg, #4A3022, #332015); color: white; border-left-color: #D4A373;">
                     <h3 style="color: #D4A373;">Kartu Member Digital</h3>
-                    <div class="value" style="color: white;">ID: BEKAL-<?php echo 1000 + $user_id; ?></div>
+                    <div class="value" style="color: white; font-size:24px;">ID: BEKAL-<?= e(1000 + (int)$user_id) ?></div>
                     <p style="font-size:12px; margin-top:10px; color:#d4a373;">Kategori: <strong>GOLD LOYALIST</strong></p>
                 </div>
                 <div class="card">
@@ -353,66 +354,65 @@ $result_produk = $conn->query($query_produk);
                     <div class="value" style="color: var(--success);">180 Poin</div>
                     <p style="font-size:12px; color:#666; margin-top:5px;">Kumpulkan 20 poin lagi untuk Klaim 1 Botol Gratis!</p>
                 </div>
+                <div class="card">
+                    <h3>Status Member</h3>
+                    <div class="value" style="color: var(--secondary);">Aktif</div>
+                    <p style="font-size:12px; color:#666; margin-top:5px;">Silakan ajukan booking event kopi keliling.</p>
+                </div>
             </div>
 
-            <!-- Katalog Rincian Kopi Detail -->
             <div class="section-block">
                 <h2>☕ Katalog Eksklusif Rincian Karakteristik Kopi</h2>
                 <div class="catalog-grid">
-                    <?php 
-                    $result_produk->data_seek(0);
-                    while($p = $result_produk->fetch_assoc()) {
-                        echo "
-                        <div class='catalog-item'>
-                            <h4>{$p['nama_kopi']}</h4>
-                            <span class='price'>Rp ".number_format($p['harga'],0,',','.')."</span>
-                            <p>{$p['deskripsi']}</p>
-                            <div style='text-align:left; font-size:11px; background:#faf7f0; padding:8px; border-radius:4px; margin-top:10px;'>
-                                🟢 <strong>Notes:</strong> Creamy, Chocolatey, Low Acidity.<br>
-                                📦 <strong>Kemasan:</strong> Botol PET Ramah Lingkungan 250ml.
-                            </div>
-                        </div>";
+                    <?php
+                    if ($result_produk) {
+                        $result_produk->data_seek(0);
+                        while($p = $result_produk->fetch_assoc()) {
+                            $desc = $p['deskripsi'] ?? '';
+                            echo "<div class='catalog-item'>";
+                            echo "<h4>".e($p['nama_kopi'])."</h4>";
+                            echo "<span class='price'>Rp ".number_format((float)$p['harga'], 0, ',', '.')."</span>";
+                            echo "<p>".e($desc)."</p>";
+                            echo "</div>";
+                        }
                     }
                     ?>
                 </div>
             </div>
 
-            <!-- Booking Slot Event bekalkopibdg -->
             <div class="section-block">
                 <h2>📅 Form Pengajuan Booking Layanan Kopi Keliling (Event/Gathering)</h2>
-                <form method="POST" action="" onsubmit="event.preventDefault(); alert('Permintaan booking berhasil diajukan! Tim admin kami akan menghubungi Anda via WhatsApp dalam 1x24 jam.');">
-                    <div class="grid-3" style="grid-template-columns: 1fr 1fr; margin-bottom: 15px;">
-                        <div class="form-group">
-                            <label>Jenis Event / Acara</label>
-                            <select required>
-                                <option>Gathering Komunitas / Klub Motor</option>
-                                <option>Seminar / Sidang Himpunan Kampus</option>
-                                <option>Pesta Pernikahan / Syukuran Rumah</option>
-                                <option>Lainnya</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tanggal Rencana Pelaksanaan</label>
-                            <input type="date" required>
-                        </div>
+                <form method="POST" action="proses_booking.php">
+                    <input type="hidden" name="submit_booking" value="1" />
+                    <div class="form-group">
+                        <label>Nama Lengkap / Nama Instansi</label>
+                        <input type="text" name="nama_klien" placeholder="Contoh: Rani Putri" required>
                     </div>
                     <div class="form-group">
-                        <label>Pilihan Paket Kuota Kopi Botol</label>
-                        <select required>
-                            <option>Paket Satuan Gembira (50 Botol Varian Campur + Free Pengantaran Lokasi Bandung)</option>
-                            <option>Paket Serbu Kampus (100 Botol Varian Campur + Penempatan Motor Box di Lokasi)</option>
-                            <option>Paket Enterprise Hub (Sistem Custom sesuai Kebutuhan Event)</option>
+                        <label>Nomor WhatsApp Aktif</label>
+                        <input type="text" name="no_wa" placeholder="08xxxxxxxxxx" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jenis Layanan Kopi Keliling</label>
+                        <select name="tipe_layanan" required>
+                            <option value="Gathering Komunitas / Klub Motor">Gathering Komunitas / Klub Motor</option>
+                            <option value="Seminar / Sidang Himpunan Kampus">Seminar / Sidang Himpunan Kampus</option>
+                            <option value="Pesta Pernikahan / Syukuran Rumah">Pesta Pernikahan / Syukuran Rumah</option>
+                            <option value="Corporate Event / Launching Produk">Corporate Event / Launching Produk</option>
+                            <option value="Lainnya">Lainnya</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Alamat Lengkap Detail Lokasi Drop Point / Penempatan</label>
-                        <textarea rows="3" placeholder="Contoh: Jl. Dipatiukur No. X, Coblong, Kota Bandung (Halaman Parkir Gedung)" required></textarea>
+                        <label>Rincian Pesanan</label>
+                        <textarea rows="4" name="rincian_pesanan" placeholder="Jelaskan detail acara Anda (tanggal, lokasi di Bandung, perkiraan porsi, dll)" required></textarea>
                     </div>
                     <button type="submit" class="btn">Kirim Form Reservasi Booking</button>
                 </form>
             </div>
+
         <?php endif; ?>
 
     </div>
 </body>
 </html>
+
